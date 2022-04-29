@@ -9,9 +9,11 @@ constexpr const uint8_t dotstar_data = 7;
 constexpr const uint8_t dotstar_clock = 8;
 constexpr const uint8_t neo_pin = 4;
 constexpr const uint8_t red_led = 13;
+constexpr const uint8_t led_count = 6;
 
 constexpr const uint8_t frame_delay = 50;
-constexpr const uint16_t max_idle_lit_frames = (1000 / frame_delay) * 10;
+
+constexpr const uint16_t max_idle_lit_frames = (1000 / frame_delay) * 20;
 
 bool failed = false;
 
@@ -19,11 +21,14 @@ uint16_t lit_frames = 0;
 bool lit = false;
 
 Adafruit_DotStar dot(1, dotstar_data, dotstar_clock, DOTSTAR_BRG);
-Adafruit_NeoPixel pixel(2, neo_pin, NEO_RGB);
+Adafruit_NeoPixel pixel(led_count, neo_pin, NEO_RGB);
 Adafruit_VCNL4010 vcnl;
 
 void setup(void) {
+#ifndef CAB_LIGHTS_RELEASE
   Serial.begin(9600);
+#endif
+
   pinMode(red_led, OUTPUT);
 
   dot.begin();
@@ -37,7 +42,7 @@ void setup(void) {
     dot.setPixelColor(0, i % 2 == 0 ? Adafruit_DotStar::Color(255, 0, 0) : Adafruit_DotStar::Color(0, 255, 0));
     dot.show();
 
-    for (unsigned char j = 0; j < 2; j++) {
+    for (unsigned char j = 0; j < led_count; j++) {
       pixel.setPixelColor(
         j,
         i % 2 == 0
@@ -51,13 +56,13 @@ void setup(void) {
 
   dot.setPixelColor(0, Adafruit_DotStar::Color(0, 0, 0));
   dot.show();
-  pixel.fill(Adafruit_NeoPixel::Color(0, 0, 0), 0, 2);
+  pixel.fill(Adafruit_NeoPixel::Color(0, 0, 0), 0, led_count);
   pixel.show();
 
   if (!vcnl.begin()) {
     dot.setPixelColor(0, Adafruit_DotStar::Color(255, 0, 0));
     dot.show();
-    pixel.fill(Adafruit_NeoPixel::Color(255, 0, 0), 0, 2);
+    pixel.fill(Adafruit_NeoPixel::Color(255, 0, 0), 0, led_count);
     pixel.show();
     failed = true;
     return;
@@ -73,6 +78,7 @@ void loop(void) {
 
   uint16_t prox = vcnl.readProximity();
 
+#ifndef CAB_LIGHTS_RELEASE
   Serial.print("prox[");
   Serial.print(prox);
   Serial.print("] frame[");
@@ -80,6 +86,7 @@ void loop(void) {
   Serial.print("] max[");
   Serial.print(max_idle_lit_frames);
   Serial.println("]");
+#endif
 
   bool close = prox >= 2500;
 
@@ -89,7 +96,7 @@ void loop(void) {
 
     if (!lit) {
       lit = true;
-      pixel.fill(Adafruit_NeoPixel::Color(255, 255, 255), 0, 2);
+      pixel.fill(Adafruit_NeoPixel::Color(255, 255, 255), 0, led_count);
       pixel.show();
     }
 
@@ -99,7 +106,7 @@ void loop(void) {
   lit_frames += 1;
 
   if (lit && lit_frames > max_idle_lit_frames) {
-    pixel.fill(Adafruit_NeoPixel::Color(0, 0, 0), 0, 2);
+    pixel.fill(Adafruit_NeoPixel::Color(0, 0, 0), 0, led_count);
     pixel.show();
     lit = false;
     lit_frames = 0;
